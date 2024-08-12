@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Link to Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <h1>Interactive Map Tool</h1>
+    <div id="map" style="height: 500px;"></div>
+    <input type="file" id="file-input" accept=".shp, .kml">
+    <button id="draw-button">Draw Line</button>
+    <button id="clear-button">Clear Line</button>
+    <button id="calculate-extent-button">Calculate Extent</button>
+
+    <label for="buffer-distance">Buffer Distance (m):</label>
+    <input type="number" id="buffer-distance" value="50">
+
+    <label for="spacing">Spacing (m):</label>
+    <input type="number" id="spacing" value="5">
+
+    <!-- Ensure these elements are present for date range selection -->
+    <h2>Select Date Range:</h2>
+    <input type="date" id="start-date" placeholder="Start Date">
+    <input type="date" id="end-date" placeholder="End Date">
+
+    <!-- Container to display and select dates -->
+    <h2>Select Available Date:</h2>
+    <select id="dates-dropdown">
+        <option value="">--Select a Date--</option> <!-- Default option -->
+    </select>
+
+
+    <!-- File input for uploading .nc file -->
+    <h2>Upload NetCDF File:</h2>
+    <input type="file" id="file-input" accept=".nc">
+    <button id="process-button">Process NetCDF File</button>
+
+    <!-- Link to Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

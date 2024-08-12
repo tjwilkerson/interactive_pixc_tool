@@ -1,0 +1,19 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+#map {
+    width: 100vw;   /* Full viewport width */
+    height: 100vh;  /* Full viewport height */
+    margin: 0;      /* Remove any margins */
+}
+
+#file-input {
+    margin-top: 20px;
+}
+
+#draw-button {
+    margin-top: 10px;
+}

@@ -1,0 +1,11 @@
+pandas
+geopandas
+numpy
+shapely
+scipy
+netCDF4
+xarray
+flask
+requests
+flask-cors
+matplotlib

@@ -26,6 +26,12 @@ let drawingMode = false;
 let drawnLine = null;
 let markers = [];
 
+// Declare global variables to store bounding box coordinates
+let selectedMinLat = null;
+let selectedMaxLat = null;
+let selectedMinLng = null;
+let selectedMaxLng = null;
+
 // Function to send the drawn line's extent and date range to the server
 function sendExtentToServer(minLat, maxLat, minLng, maxLng) {
     const startDateInput = document.getElementById('start-date').value;
@@ -35,6 +41,12 @@ function sendExtentToServer(minLat, maxLat, minLng, maxLng) {
         alert("Please select a start and end date.");
         return;
     }
+
+    // Store the bounding box coordinates in global variables
+    selectedMinLat = minLat;
+    selectedMaxLat = maxLat;
+    selectedMinLng = minLng;
+    selectedMaxLng = maxLng;
 
     // Create the data object with the extent and date range
     const extentData = {
@@ -64,6 +76,10 @@ function sendExtentToServer(minLat, maxLat, minLng, maxLng) {
     .catch(error => console.error('Error:', error));
 }
 
+/// Declare global variables to store start and end dates
+let selectedStartDate = null;
+let selectedEndDate = null;
+
 // Function to filter the returned granules based on the selected date range and populate the dropdown
 function filterAndPopulateDatesDropdown(data) {
     const startDateInput = document.getElementById('start-date').value;
@@ -73,6 +89,10 @@ function filterAndPopulateDatesDropdown(data) {
         alert("Please select a start and end date.");
         return;
     }
+
+    // Store the selected start and end dates in global variables
+    selectedStartDate = startDateInput;
+    selectedEndDate = endDateInput;
 
     // Parse input dates
     const startDate = new Date(startDateInput);
@@ -89,47 +109,58 @@ function filterAndPopulateDatesDropdown(data) {
 
     granules.forEach(granule => {
         const timeStart = new Date(granule.time_start);
-        console.log(`Checking date: ${timeStart.toISOString()}`);
+        const timeEnd = new Date(granule.time_end); // Assuming the response includes an 'time_end' field
+
+        console.log(`Checking date: ${timeStart.toISOString()} to ${timeEnd.toISOString()}`);
 
         // Find the NetCDF download link
         const netCDFLink = granule.links.find(link => link.href.endsWith('.nc') && link.rel.includes('data'));
 
         if (timeStart >= startDate && timeStart <= endDate && netCDFLink) {
-            console.log(`Adding date: ${timeStart.toISOString()}`);
+            console.log(`Adding date: ${timeStart.toISOString()} to ${timeEnd.toISOString()}`);
             const option = document.createElement('option');
             option.value = netCDFLink.href; // Use the download link as the value
-            option.textContent = `Start: ${granule.time_start}`;
+            option.textContent = `Start: ${granule.time_start}, End: ${granule.time_end}`;
             datesDropdown.appendChild(option);
         }
     });
 }
 
-// Event listener for date selection from the dropdown
-document.getElementById('dates-dropdown').addEventListener('change', function(event) {
-    const selectedNetCDFLink = event.target.value;
-    if (selectedNetCDFLink) {
-        alert(`Download selected NetCDF file here: ${selectedNetCDFLink}`);
-    
+// Event listener to update selectedStartDate and selectedEndDate when a date is selected from the dropdown
+document.getElementById('dates-dropdown').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value) {
+        // Extract the start and end dates from the selected option's text
+        const [start, end] = selectedOption.textContent.replace('Start: ', '').split(', End: ');
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        
+        // Update global variables with the selected start and end dates
+        selectedStartDate = startDate.toISOString();  // Only take the date part
+        selectedEndDate = endDate.toISOString();  // Only take the date part
+
+        console.log(`Selected Start Date: ${selectedStartDate}`);
+        console.log(`Selected End Date: ${selectedEndDate}`);
     }
 });
 
-// Function to handle file input
-function handleFileInput(event) {
-    const file = event.target.files[0];
-    if (!file) {
-        alert("No file selected.");
-        return;
+// Now you can use `selectedStartDate` and `selectedEndDate` later when needed
+
+
+
+
+// Define selectedNetCDFLink globally
+let selectedNetCDFLink = null;
+
+// Event listener for date selection from the dropdown
+document.getElementById('dates-dropdown').addEventListener('change', function(event) {
+    selectedNetCDFLink = event.target.value;
+    if (selectedNetCDFLink) {
+        alert(`Download selected NetCDF file here: ${selectedNetCDFLink}`);
     }
-    console.log('NetCDF file selected:', file.name);
+});
 
-    // Optionally, display the file name on the page
-    document.getElementById('file-name-display').innerText = `Selected file: ${file.name}`;
-}
-
-// Add event listener to the file input element
-document.getElementById('file-input').addEventListener('change', handleFileInput);
-
-// Add event listener for the Process Data button
+// Event listener for the Process Data button
 document.getElementById('process-button').addEventListener('click', () => {
     const bufferDistance = document.getElementById('buffer-distance').value;
     const spacing = document.getElementById('spacing').value;
@@ -140,31 +171,172 @@ document.getElementById('process-button').addEventListener('click', () => {
     }
 
     const geoJsonLine = drawnLine.toGeoJSON();
-    const fileInput = document.getElementById('file-input');
-    if (fileInput.files.length === 0) {
-        alert("Please upload a NetCDF file.");
+    
+    if (!selectedNetCDFLink) {
+        alert("Please select a date from the drop down.");
         return;
     }
-    const netCDFFile = fileInput.files[0];
 
-    const formData = new FormData();
-    formData.append('netcdf', netCDFFile);
-    formData.append('geojson', JSON.stringify(geoJsonLine));
-    formData.append('buffer_distance', bufferDistance);
-    formData.append('spacing', spacing);
-
-    fetch('http://localhost:5000/process', {
+    fetch('http://localhost:5000/download_and_process', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            start_date: selectedStartDate,
+            end_date: selectedEndDate,
+            min_lat: selectedMinLat,
+            max_lat: selectedMaxLat,
+            min_lng: selectedMinLng,
+            max_lng: selectedMaxLng,
+            geojson: JSON.stringify(geoJsonLine),
+            buffer_distance: bufferDistance,
+            spacing: spacing
+        })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+    })
     .then(data => {
-        console.log('Processing result:', data);
-        alert('Data processed successfully. Check console for details.');
+        if (data.error) {
+            console.error('Error:', data.error);
+            alert(`Error processing data: ${data.error}`);
+        } else {
+            console.log('Processing result:', data.result);
+            alert('Data processed successfully.');
+        }
     })
-    .catch(error => console.error('Error processing data:', error));
+    .catch(error => {
+        console.error('Error processing data:', error);
+        alert(`Error processing data: ${error.message}`);
+    });
 });
 
+
+
+
+// // Define selectedNetCDFLink globally
+// let selectedNetCDFLink = null;
+
+// // Event listener for date selection from the dropdown
+// document.getElementById('dates-dropdown').addEventListener('change', function(event) {
+//     selectedNetCDFLink = event.target.value;
+//     if (selectedNetCDFLink) {
+//         alert(`Download selected NetCDF file here: ${selectedNetCDFLink}`);
+//     }
+// });
+
+
+// // Event listener for the Process Data button
+// document.getElementById('process-button').addEventListener('click', () => {
+//     const bufferDistance = document.getElementById('buffer-distance').value;
+//     const spacing = document.getElementById('spacing').value;
+
+//     if (!drawnLine || drawnLine.getLatLngs().length === 0) {
+//         alert("Please draw a line on the map first.");
+//         return;
+//     }
+
+//     const geoJsonLine = drawnLine.toGeoJSON();
+    
+//     if (selectedNetCDFLink === null) {
+//         alert("Please select a date from drop down.");
+//         return;
+//     }
+
+//     fetch('http://localhost:5000/download_and_process', {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json'
+//         },
+//         body: JSON.stringify({
+//             url: selectedNetCDFLink,
+//             geojson: JSON.stringify(geoJsonLine),
+//             buffer_distance: bufferDistance,
+//             spacing: spacing
+//         })
+//     })
+//     .then(response => response.json())
+//     .then(data => {
+//         if (data.error) {
+//             console.error('Error:', data.error);
+//         } else {
+//             console.log('Processing result:', data.result);
+//             alert('Data processed successfully.');
+//         }
+//     })
+//     .catch(error => console.error('Error processing data:', error));
+// });    
+
+
+// // Function to handle file input
+// function handleFileInput(event) {
+//     const file = event.target.files[0];
+//     if (!file) {
+//         alert("No file selected.");
+//         return;
+//     }
+//     console.log('NetCDF file selected:', file.name);
+
+//     // Optionally, display the file name on the page
+//     document.getElementById('file-name-display').innerText = `Selected file: ${file.name}`;
+// }
+
+// // Add event listener to the file input element
+// document.getElementById('file-input').addEventListener('change', handleFileInput);
+
+// // Function to handle file input
+// function handleFileInput(event) {
+//     const file = event.target.files[0];
+//     if (!file) {
+//         alert("No file selected.");
+//         return;
+//     }
+//     console.log('NetCDF file selected:', file.name);
+
+//     // Optionally, display the file name on the page
+//     document.getElementById('file-name-display').innerText = `Selected file: ${file.name}`;
+// }
+
+// // Add event listener to the file input element
+// document.getElementById('file-input').addEventListener('change', handleFileInput);
+
+// // Add event listener for the Process Data button
+// document.getElementById('process-button').addEventListener('click', () => {
+//     const bufferDistance = document.getElementById('buffer-distance').value;
+//     const spacing = document.getElementById('spacing').value;
+
+//     if (!drawnLine || drawnLine.getLatLngs().length === 0) {
+//         alert("Please draw a line on the map first.");
+//         return;
+//     }
+
+//     const geoJsonLine = drawnLine.toGeoJSON();
+//     const fileInput = document.getElementById('file-input');
+//     if (fileInput.files.length === 0) {
+//         alert("Please upload a NetCDF file.");
+//         return;
+//     }
+//     const netCDFFile = fileInput.files[0];
+
+//     const formData = new FormData();
+//     formData.append('netcdf', netCDFFile);
+//     formData.append('geojson', JSON.stringify(geoJsonLine));
+//     formData.append('buffer_distance', bufferDistance);
+//     formData.append('spacing', spacing);
+
+//     fetch('http://localhost:5000/process', {
+//         method: 'POST',
+//         body: formData
+//     })
+//     .then(response => response.json())
+//     .then(data => {
+//         console.log('Processing result:', data);
+//         alert('Data processed successfully. Check console for details.');
+//     })
+//     .catch(error => console.error('Error processing data:', error));
+// });
 // Enable drawing mode when the button is clicked
 document.getElementById('draw-button').addEventListener('click', () => {
     drawingMode = !drawingMode; // Toggle drawing mode

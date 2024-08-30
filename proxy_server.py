@@ -5,6 +5,15 @@ import os
 import tempfile
 import subprocess
 from netCDF4 import Dataset
+from pathlib import Path
+import geopandas as gpd
+import sys
+import pandas as pd
+from io import BytesIO
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -56,53 +65,53 @@ def query_nasa():
 
 
 
-@app.route('/download_and_process', methods=['POST'])
-def download_and_process():
-    data = request.json
+# @app.route('/download_and_process', methods=['POST'])
+# def download_and_process():
+#     data = request.json
     
-    # Extract the start date, end date, and bounding box from the request data
-    start_date = data.get('start_date')
-    end_date = data.get('end_date')
-    min_lat = data.get('min_lat')
-    max_lat = data.get('max_lat')
-    min_lng = data.get('min_lng')
-    max_lng = data.get('max_lng')
+#     # Extract the start date, end date, and bounding box from the request data
+#     start_date = data.get('start_date')
+#     end_date = data.get('end_date')
+#     min_lat = data.get('min_lat')
+#     max_lat = data.get('max_lat')
+#     min_lng = data.get('min_lng')
+#     max_lng = data.get('max_lng')
 
-    if not start_date or not end_date or not min_lat or not max_lat or not min_lng or not max_lng:
-        return jsonify({'error': 'Missing required parameters'}), 400
+#     if not start_date or not end_date or not min_lat or not max_lat or not min_lng or not max_lng:
+#         return jsonify({'error': 'Missing required parameters'}), 400
 
-    try:
-        # Format the start and end dates to remove milliseconds
-        formatted_start_date = start_date.split('.')[0] + "Z"
-        formatted_end_date = end_date.split('.')[0] + "Z"
+#     try:
+#         # Format the start and end dates to remove milliseconds
+#         formatted_start_date = start_date.split('.')[0] + "Z"
+#         formatted_end_date = end_date.split('.')[0] + "Z"
 
-        save_directory = 'tempdir'
-        if not os.path.exists(save_directory):
-            os.makedirs(save_directory)
+#         save_directory = 'tempdir'
+#         if not os.path.exists(save_directory):
+#             os.makedirs(save_directory)
 
 
-        # Create the bounding box argument as a single string
-        bounding_box = f"-b={min_lng},{min_lat},{max_lng},{max_lat}"
+#         # Create the bounding box argument as a single string
+#         bounding_box = f"-b={min_lng},{min_lat},{max_lng},{max_lat}"
 
-        # Construct the podaac-data-downloader command
-        command = [
-            "podaac-data-downloader",
-            "-c", "SWOT_L2_HR_PIXC_2.0",  # Use the correct collection short name
-            "-d", save_directory,  # Specify the output directory
-            "--start-date", formatted_start_date,
-            "--end-date", formatted_end_date,
-            bounding_box  # Bounding box as a single argument
-        ]
+#         # Construct the podaac-data-downloader command
+#         command = [
+#             "podaac-data-downloader",
+#             "-c", "SWOT_L2_HR_PIXC_2.0",  # Use the correct collection short name
+#             "-d", save_directory,  # Specify the output directory
+#             "--start-date", formatted_start_date,
+#             "--end-date", formatted_end_date,
+#             bounding_box  # Bounding box as a single argument
+#         ]
 
-        # Run the downloader command
-        subprocess.run(command, check=True)
-        print("File downloaded successfully.")
+#         # Run the downloader command
+#         subprocess.run(command, check=True)
+#         print("File downloaded successfully.")
         
-        return jsonify({'message': 'File downloaded successfully', 'directory': save_directory}), 200
+#         return jsonify({'message': 'File downloaded successfully', 'directory': save_directory}), 200
 
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred: {e}")
-        return jsonify({'error': str(e)}), 500
+#     except subprocess.CalledProcessError as e:
+#         print(f"An error occurred: {e}")
+#         return jsonify({'error': str(e)}), 500
 
 # @app.route('/download_and_process', methods=['POST'])
 # def download_and_process():
@@ -137,40 +146,6 @@ def download_and_process():
 #     except requests.exceptions.RequestException as e:
 #         print(f"RequestException: {str(e)}")
 #         return jsonify({'error': str(e)}), 500
-
-#     except Exception as e:
-#         print(f"An error occurred: {str(e)}")
-#         return jsonify({'error': str(e)}), 500
-
-# @app.route('/download_and_process', methods=['POST'])
-# def download_and_process():
-#     # Get data from the request
-#     data = request.json
-#     url = data.get('url')
-
-#     if not url:
-#         return jsonify({'error': 'No URL provided'}), 400
-
-#     try:
-#         # Create a temporary directory to save files
-#         with tempfile.TemporaryDirectory() as tmpdirname:
-#             # Download the file
-#             filename = os.path.basename(url)
-#             local_filename = os.path.join(tmpdirname, filename)
-
-#             print(f"Attempting to download file from URL: {url}")
-#             response = requests.get(url, stream=True, timeout=(100, 200))  # Use .netrc for authentication
-#             if response.status_code == 200:
-#                 with open(local_filename, 'wb') as f:
-#                     for chunk in response.iter_content(chunk_size=8192):
-#                         f.write(chunk)
-
-#                 print(f"File successfully downloaded to: {local_filename}")
-
-#                 return jsonify({'message': 'File downloaded successfully', 'file_path': local_filename}), 200
-#             else:
-#                 print(f"Failed to download file. Status code: {response.status_code}")
-#                 return jsonify({'error': 'Failed to fetch file'}), response.status_code
 
 #     except Exception as e:
 #         print(f"An error occurred: {str(e)}")
@@ -225,6 +200,109 @@ def download_and_process():
 
 #     except Exception as e:
 #         return jsonify({'error': str(e)}), 500
+    
+
+@app.route('/download_and_process', methods=['POST'])
+def download_and_process():
+    data = request.json
+    
+    # Extract the start date, end date, and bounding box from the request data
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    min_lat = data.get('min_lat')
+    max_lat = data.get('max_lat')
+    min_lng = data.get('min_lng')
+    max_lng = data.get('max_lng')
+    geojson_line = data.get('geojson')
+    buffer_distance = float(data.get('buffer_distance'))
+    spacing = float(data.get('spacing'))
+
+    if not start_date or not end_date or not min_lat or not max_lat or not min_lng or not max_lng:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    try:
+        # Format the start and end dates to remove milliseconds
+        formatted_start_date = start_date.split('.')[0] + "Z"
+        formatted_end_date = end_date.split('.')[0] + "Z"
+
+        save_directory = 'tempdir'
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
+
+        # Create the bounding box argument as a single string
+        bounding_box = f"-b={min_lng},{min_lat},{max_lng},{max_lat}"
+
+        # Construct the podaac-data-downloader command
+        command = [
+            "podaac-data-downloader",
+            "-c", "SWOT_L2_HR_PIXC_2.0",  # Use the correct collection short name
+            "-d", save_directory,  # Specify the output directory
+            "--start-date", formatted_start_date,
+            "--end-date", formatted_end_date,
+            bounding_box  # Bounding box as a single argument
+        ]
+
+        # Run the downloader command
+        subprocess.run(command, check=True)
+        print("File downloaded successfully.")
+
+        # Assume the file is downloaded with a known file name structure, or you could iterate over files in the directory
+        downloaded_file = next(Path(save_directory).glob('*.nc'))  # Find the first .nc file in the directory
+
+        # Save GeoJSON line temporarily
+        temp_geojson_file = os.path.join(save_directory, 'geojson_line.json')
+        with open(temp_geojson_file, 'w') as f:
+            f.write(geojson_line)
+
+        print(downloaded_file)
+        print(temp_geojson_file)
+        print(buffer_distance)
+        print(spacing)
+        
+        # Call the external Python script to process the data
+        result = subprocess.run(
+            [sys.executable, "external_processor.py", str(downloaded_file), str(temp_geojson_file), str(buffer_distance), str(spacing)],
+            capture_output=True,
+            text=True
+        )
+        print(f'result.returncode: {result.returncode}')
+        if result.returncode == 0:
+            result_json = result.stdout
+            df = pd.read_json(result_json)
+            print(df.head())
+
+            # Plot the data
+            fig = plt.figure(figsize=(15, 8))
+            ax = fig.add_subplot(111)
+
+            # Apply filter to keep points where classification is greater than 2 and not 5
+            df_filtered = df[(df['classification'] > 2) & (df['classification'] != 5)]
+
+            sc = ax.scatter(df_filtered['cumulative_distance'], df_filtered['height'], 
+                            c=df_filtered['geolocation_qual'], cmap='viridis', zorder=2, label='SWOT WSE data')
+
+            ax.legend()
+            ax.set_title('Point Cloud SWOT WSE vs GNSS WSE Day 1')
+            ax.set_xlabel('Distance Downstream')
+            ax.set_ylabel('WSE (m)')
+
+            # Add color bar
+            cbar = plt.colorbar(sc, ax=ax)
+            cbar.set_label('Coherent Power')
+
+            # Save plot to a BytesIO object
+            img = BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+
+            return send_file(img, mimetype='image/png')
+
+        else:
+            return jsonify({"error": result.stderr}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

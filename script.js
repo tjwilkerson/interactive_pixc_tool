@@ -196,16 +196,14 @@ document.getElementById('process-button').addEventListener('click', () => {
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
+        return response.blob();  // Expect a blob response since it's an image
     })
-    .then(data => {
-        if (data.error) {
-            console.error('Error:', data.error);
-            alert(`Error processing data: ${data.error}`);
-        } else {
-            console.log('Processing result:', data.result);
-            alert('Data processed successfully.');
-        }
+    .then(imageBlob => {
+        // Create a URL for the image blob and display it
+        const imageObjectURL = URL.createObjectURL(imageBlob);
+        const imgElement = document.createElement('img');
+        imgElement.src = imageObjectURL;
+        document.body.appendChild(imgElement);
     })
     .catch(error => {
         console.error('Error processing data:', error);

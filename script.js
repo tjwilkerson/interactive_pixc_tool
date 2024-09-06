@@ -160,6 +160,10 @@ document.getElementById('dates-dropdown').addEventListener('change', function(ev
     }
 });
 
+
+
+
+
 // Event listener for the Process Data button
 document.getElementById('process-button').addEventListener('click', () => {
     const bufferDistance = document.getElementById('buffer-distance').value;
@@ -173,7 +177,7 @@ document.getElementById('process-button').addEventListener('click', () => {
     const geoJsonLine = drawnLine.toGeoJSON();
     
     if (!selectedNetCDFLink) {
-        alert("Please select a date from the drop down.");
+        alert("Please select a date from the dropdown.");
         return;
     }
 
@@ -196,21 +200,19 @@ document.getElementById('process-button').addEventListener('click', () => {
     })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.blob();  // Expect a blob response since it's an image
+        return response.blob();  // Get the response as a Blob (binary large object)
     })
     .then(imageBlob => {
-        // Create a URL for the image blob and display it
+        // Create a URL for the image blob
         const imageObjectURL = URL.createObjectURL(imageBlob);
-        const imgElement = document.createElement('img');
-        imgElement.src = imageObjectURL;
-        document.body.appendChild(imgElement);
+        // Open the image in a new tab
+        window.open(imageObjectURL, '_blank');
     })
     .catch(error => {
         console.error('Error processing data:', error);
         alert(`Error processing data: ${error.message}`);
     });
 });
-
 
 
 

@@ -1,0 +1,6 @@
+# Ignore virtual environment
+interactive_tool/
+
+# Ignore temp data
+tempdir/
+

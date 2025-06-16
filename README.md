@@ -1,0 +1,1 @@
+This tools is designed to let the user dynamically explor PICX data and present it in a stream distance vs water surface elevation profile. It is still a work in progress and will take a consiterable amout of effort for a user to install and use however, the result provides fast and effiective data visualization.

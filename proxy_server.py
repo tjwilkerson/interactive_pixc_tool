@@ -22,7 +22,7 @@ def query_nasa_data(min_lat, max_lat, min_lng, max_lng, start_date, end_date):
     url = "https://cmr.earthdata.nasa.gov/search/granules.json"
     page_size = 2000  # Set the maximum page size to retrieve as many results as possible
     params = {
-        "collection_concept_id": "C2799438266-POCLOUD",
+        "collection_concept_id": "C3233944986-POCLOUD",
         "bounding_box": f"{min_lng},{min_lat},{max_lng},{max_lat}",
         "temporal": f"{start_date},{end_date}",
         "page_size": page_size,
